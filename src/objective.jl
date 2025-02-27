@@ -135,12 +135,12 @@ _elbo(::CondBernoulli, log_weights, log_As) = _elbo_mcvae(log_weights, log_As)
 _elbo(::CondBernoulliCV, log_weights, log_As) = _elbo_mcvae_cv(log_weights, log_As)
 
 function kl_objective(
+    rng::AbstractRNG,
     prob::AISProblem,
     GE::AbstractGradEst,
     sched::AbstractScheduler,
-    rng,
-    N,
-    transition_kernel
+    N::Int,
+    transition_kernel::TransitionKernel,
 )
     states = iid_sample_reference(rng, prob, N)
     log_weights, log_As, _ = _compute_log_weights(rng, prob, sched, states; N=N, transition_kernel=transition_kernel)
@@ -148,3 +148,32 @@ function kl_objective(
 end
 
 kl_objective(θ_flat, re, GE::AbstractGradEst, args...) = kl_objective(re(θ_flat), GE, args...)
+
+# function dais(
+#     rng::AbstractRNG,
+#     prob::AISProblem,
+#     args...;
+#     max_iters::Int=1000,
+#     optimiser::Optimisers.AbstractRule=Optimisers.ADAM(),
+#     ADbackend,
+#     kwargs...
+# )
+#     θ_flat, re = destructure(prob)
+#     loss(θ, rng, args...) = kl_objective(rng, re(θ), args...)
+
+#     # Normalizing flow training loop 
+#     θ_flat_trained, opt_stats, st, time_elapsed = optimize(
+#         ADbackend,
+#         loss,
+#         θ_flat,
+#         re,
+#         (rng, args...)...;
+#         max_iters=max_iters,
+#         optimiser=optimiser,
+#         kwargs...,
+#     )
+
+#     prob_trained = re(θ_flat_trained)
+#     return prob_trained, opt_stats, st, time_elapsed
+# end
+

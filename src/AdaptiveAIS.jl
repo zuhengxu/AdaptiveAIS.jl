@@ -89,6 +89,8 @@ export elbo
 include("objective.jl")
 export kl_objective
 
+include("train.jl")
+export dais
 
 
 end

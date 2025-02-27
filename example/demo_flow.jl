@@ -102,11 +102,13 @@ ZO = TwoPointZeroOrderSmooth()
 CB = CondBernoulli()
 CBCV = CondBernoulliCV()
 
-kl_objective(prob, ZO, MD, rng, N,  RWMH_sweep())
-kl_objective(prob, CB, MD, rng, N,  RWMH_sweep())
-kl_objective(prob, CBCV, MD, rng, N,  RWMH_sweep())
+kernel = RWMH_sweep()
+kl_objective(rng, prob, ZO, MD, N, kernel)
+kl_objective(rng, prob, CB, MD, N, kernel)
+kl_objective(rng, prob, CBCV, MD, N, kernel)
 
 ps, re = Optimisers.destructure(prob)
+DMD = DebiasOnlineScheduling(MD)
 lld(θ_) = kl_objective(θ_, re, CB, DMD, rng, N, RWMH_sweep())
 lld(ps)
 
@@ -126,3 +128,4 @@ DI.gradient(llls, AD, ps)
 DI.value_and_gradient(llls, AD, ps)
 
 Zygote.gradient(lld, ps)
+
