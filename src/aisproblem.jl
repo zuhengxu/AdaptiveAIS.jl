@@ -57,37 +57,37 @@ end
 log_annealed_density(prob::AISProblem, beta, xs::AbstractMatrix) = map(x -> log_annealed_density(prob, beta, x), eachcol(xs))
 
 
-# customized adjoint for log_annealed_density
-function ChainRulesCore.rrule(::typeof(log_annealed_density), prob::AISProblem, beta::Real, state::AbstractVector)
-    y = log_annealed_density(prob, beta, state)
-    function log_annealed_density_pullback(Δy)
-        prob⁻ = NoTangent()
-        beta⁻ = Δy * log_density_ratio(prob, state)
-        state⁻ = log_annealed_gradient(prob, beta, state) .* Δy 
-        return NoTangent(), prob⁻, beta⁻, state⁻
-    end
-    return y, log_annealed_density_pullback
-end
+# # customized adjoint for log_annealed_density
+# function ChainRulesCore.rrule(::typeof(log_annealed_density), prob::AISProblem, beta::Real, state::AbstractVector)
+#     y = log_annealed_density(prob, beta, state)
+# ssaa   function log_annealed_density_pullback(Δy)
+#         prob⁻ = NoTangent()
+#         beta⁻ = Δy * log_density_ratio(prob, state)
+#         state⁻ = log_annealed_gradient(prob, beta, state) .* Δy 
+#         return NoTangent(), prob⁻, beta⁻, state⁻
+#     end
+#     return y, log_annealed_density_pullback
+# end
 
 
-function log_annealed_gradient(prob::AISProblem, beta, x::AbstractVector)
-    @unpack reference, target, path = prob
-    ℓπ0, ∇ℓπ0 = LogDensityProblems.logdensity_and_gradient(reference, x)
-    ℓπT, ∇ℓπT = LogDensityProblems.logdensity_and_gradient(target, x)
-    ℓπt = anneal(path, beta, ℓπ0, ℓπT)
-    ∇ℓπt = anneal(path, beta, ∇ℓπ0, ∇ℓπT)
-    return ensure_finite(ℓπt, ∇ℓπt)
-end
-log_annealed_gradient(prob::AISProblem, beta, xs::AbstractMatrix) = mapreduce(x -> log_annealed_gradient(prob, beta, x), hcat, eachcol(xs))
+# function log_annealed_gradient(prob::AISProblem, beta, x::AbstractVector)
+#     @unpack reference, target, path = prob
+#     ℓπ0, ∇ℓπ0 = LogDensityProblems.logdensity_and_gradient(reference, x)
+#     ℓπT, ∇ℓπT = LogDensityProblems.logdensity_and_gradient(target, x)
+#     ℓπt = anneal(path, beta, ℓπ0, ℓπT)
+#     ∇ℓπt = anneal(path, beta, ∇ℓπ0, ∇ℓπT)
+#     return ensure_finite(ℓπt, ∇ℓπt)
+# end
+# log_annealed_gradient(prob::AISProblem, beta, xs::AbstractMatrix) = mapreduce(x -> log_annealed_gradient(prob, beta, x), hcat, eachcol(xs))
 
-function log_annealed_density_and_gradient(prob::AISProblem, beta, x::AbstractVector)
-    @unpack reference, target, path = prob
-    ℓπ0, ∇ℓπ0 = LogDensityProblems.logdensity_and_gradient(reference, x)
-    ℓπT, ∇ℓπT = LogDensityProblems.logdensity_and_gradient(target, x)
-    ℓπt = anneal(path, beta, ℓπ0, ℓπT)
-    ∇ℓπt = anneal(path, beta, ∇ℓπ0, ∇ℓπT)
-    return ensure_finite(ℓπt), ensure_finite(ℓπt, ∇ℓπt)
-end
+# function log_annealed_density_and_gradient(prob::AISProblem, beta, x::AbstractVector)
+#     @unpack reference, target, path = prob
+#     ℓπ0, ∇ℓπ0 = LogDensityProblems.logdensity_and_gradient(reference, x)
+#     ℓπT, ∇ℓπT = LogDensityProblems.logdensity_and_gradient(target, x)
+#     ℓπt = anneal(path, beta, ℓπ0, ℓπT)
+#     ∇ℓπt = anneal(path, beta, ∇ℓπ0, ∇ℓπT)
+#     return ensure_finite(ℓπt), ensure_finite(ℓπt, ∇ℓπt)
+# end
 
 #######################
 # output struct

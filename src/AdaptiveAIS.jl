@@ -78,7 +78,7 @@ export DecayDescent
 include("optimize/grad_estimate.jl")
 export get_gradient, update_state!, init_state!, value_and_grad
 export grad_and_update_state!, value_grad_and_update_state!
-export AbstractGradEst, TwoPointZeroOrderSmooth
+export AbstractGradEst, TwoPointZeroOrderSmooth, CondBernoulli, CondBernoulliCV
 
 #############################
 # VI objective 
@@ -87,6 +87,7 @@ include("elbo.jl")
 export elbo
 
 include("objective.jl")
+export kl_objective
 
 
 

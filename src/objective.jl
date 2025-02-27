@@ -1,7 +1,7 @@
 using ChainRulesCore: ignore_derivatives
 
 function mutate_and_weigh(
-    rngs,
+    rng,
     prob::AISProblem{R,F,LinearPath},
     transition_kernel::TransitionKernel,
     next_beta,
@@ -10,7 +10,7 @@ function mutate_and_weigh(
     Δβ, 
 ) where {R, F}
     log_ratios = log_density_ratio(prob, states) 
-    states, logAs = mutate(rngs, transition_kernel, prob, next_beta, states)
+    states, logAs = mutate(rng, transition_kernel, prob, next_beta, states)
     return states, logAs, log_weights + Δβ.* log_ratios
 end
 
@@ -38,7 +38,7 @@ function propogate_and_weigh(
 end
 
 function _compute_log_weights(
-    rngs,
+    rng,
     prob::AISProblem,
     sched::FixedSchedule, 
     states::AbstractMatrix;
@@ -49,42 +49,49 @@ function _compute_log_weights(
     logAs = zeros(N)
 
     _, log_weights, logAs = propogate_and_weigh(
-        rngs, sched, prob, transition_kernel, states, log_weights, logAs
+        rng, sched, prob, transition_kernel, states, log_weights, logAs
     )
     return log_weights, logAs, sched.schedule
 end
 
 function _compute_log_weights(
-    rngs,
+    rng,
     prob::AISProblem,
-    sched::OnlineScheduling, 
+    sched::OnlineScheduling,
     states::AbstractMatrix;
-    N::Int=2^5,
-    transition_kernel=RWMH_sweep(),
+    N::Int = 2^5,
+    transition_kernel = RWMH_sweep(),
 )
     log_weights = zeros(N)
     logAs = zeros(N)
-    
+
     schedule = Float64[0]
     cur_t = Ref(0) # keeping track of the number of annealings so far
 
     while schedule[end] < 1
         log_ratios = log_density_ratio(prob, states)
-        
+
         # find delta:= next_β - cur_β
         cur_beta = schedule[end]
 
         # WARNING: Do we want to drop grad for this function?
-        Δ = find_delta(
-            prob, sched, log_weights, log_ratios, cur_beta, cur_t[]
-        )
+        Δ = find_delta(prob, sched, log_weights, log_ratios, cur_beta, cur_t[])
         next_beta = cur_beta + Δ
-        push!(schedule, next_beta)
-        cur_t[] += 1
+
+        ignore_derivatives() do
+            push!(schedule, next_beta)
+            cur_t[] += 1
+        end
 
         # mutate and weigh particles
         states, ΔlogAs, log_weights = mutate_and_weigh(
-            rngs, prob, transition_kernel, next_beta, states, log_weights, Δ
+            rng,
+            prob,
+            transition_kernel,
+            next_beta,
+            states,
+            log_weights,
+            Δ,
         )
         logAs = logAs .+ ΔlogAs
     end
@@ -93,7 +100,7 @@ function _compute_log_weights(
 end
 
 function _compute_log_weights(
-    rngs,
+    rng,
     prob::AISProblem,
     sched::DebiasOnlineScheduling, 
     states::AbstractMatrix;
@@ -101,12 +108,12 @@ function _compute_log_weights(
     transition_kernel=RWMH_sweep(),
 )
     _, _, β = _compute_log_weights(
-        rngs, prob, sched.OnlineSched, states; N=N, transition_kernel=transition_kernel
+        rng, prob, sched.OnlineSched, states; N=N, transition_kernel=transition_kernel
     )
 
     # WARNING: okay to drop grad for this β generation?
     FS = FixedSchedule(ignore_derivatives(β))
-    return _compute_log_weights(rngs, prob, FS, states; N=N, transition_kernel=transition_kernel)
+    return _compute_log_weights(rng, prob, FS, states; N=N, transition_kernel=transition_kernel)
 end
 
 # now we can define the objective function based on those computed quantities
@@ -131,13 +138,13 @@ function kl_objective(
     prob::AISProblem,
     GE::AbstractGradEst,
     sched::AbstractScheduler,
-    rngs; 
-    N::Int=2^5,
-    transition_kernel=RWMH_sweep(),
+    rng,
+    N,
+    transition_kernel
 )
-    states = iid_sample_reference(rngs, prob, N)
-    log_weights, log_As, _ = _compute_log_weights(rngs, prob, sched, states; N=N, transition_kernel=transition_kernel)
+    states = iid_sample_reference(rng, prob, N)
+    log_weights, log_As, _ = _compute_log_weights(rng, prob, sched, states; N=N, transition_kernel=transition_kernel)
     return -_elbo(GE, log_weights, log_As)
 end
 
-
+kl_objective(θ_flat, re, GE::AbstractGradEst, args...) = kl_objective(re(θ_flat), GE, args...)
