@@ -1,8 +1,8 @@
 include("synthetic/funnel.jl")
 include("logdensityprobs.jl")
-using AdaptiveAIS
+using AdaptiveAIS 
 using Functors
-using Bijectors, FunctionChains
+using Bijectors
 using LinearAlgebra
 using Optimisers
 using Zygote
@@ -70,13 +70,12 @@ AD = AutoZygote()
 # AD = AutoMooncake(; config = Mooncake.Config())
 
 MD = MirrorDescent(stepsize = 0.1, max_Δ = 0.5, max_T = Inf)
-# a = ais(prob, MD; N = N, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
 FS = FixedSchedule(32)
 DMD = DebiasOnlineScheduling(MD)
 bs = 32
 niters = 20_000
 
-scheds = [FS, MD, DMD]
+scheds = [MD, DMD, FS]
 
 
 for sched in scheds
@@ -105,6 +104,35 @@ for sched in scheds
         JLD2.save(fp_jld, "out", out)
     end
 end
+
+# a = ais(prob, FS; N = bs, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
+
+# for sched in scheds
+#     @threads for id in 1:5
+#         AdaptiveAIS.init_state!(ZO, 1)
+#         prob_trained, train_stats, _, _ = dais_train(
+#             rng, 
+#             prob,
+#             ZO, 
+#             sched, 
+#             bs, 
+#             kernel;
+#             adbackend = ZO, 
+#             max_iters = niters,
+#             optimiser = DecayDescent()
+#         )
+#         out = process_logging(train_stats)
+
+#         # save csv
+#         fpath = "funnel_res/Decay_$(sched)_$(id).csv"
+#         df = DataFrame(out)
+#         CSV.write(fpath, df)
+
+#         # save jld2
+#         fp_jld = "funnel_res/Decay_$(sched)_$(id).jld2"
+#         JLD2.save(fp_jld, "out", out)
+#     end
+# end
 
 # out = process_logging(train_stats)
 # # turn it into a DataFrame

@@ -3,14 +3,14 @@
 
 # Define a container to hold any optimiser specific parameters (if any):
 Optimisers.@def struct DecayDescent <: Optimisers.AbstractRule
-    eta = 1.0
+    eta = 1e-4
 end
 
 # Define an `apply!` rule which encodes how the gradients will be used to
 # update the parameters:
 function Optimisers.apply!(o::DecayDescent, state, x, x̄)
     T = eltype(x)
-    newx̄ = T(o.eta / √state) .* x̄
+    newx̄ = Optimisers.@lazy T(o.eta / √state) .* x̄
     nextstate = state + 1
     return nextstate, newx̄
 end
