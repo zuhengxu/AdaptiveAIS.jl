@@ -5,12 +5,17 @@ using Functors
 using Bijectors, FunctionChains
 using LinearAlgebra
 using Optimisers
+using Zygote
+using ADTypes
+using Base.Threads: @threads
+using DataFrames, CSV, JLD2
+
+# Zygote.refresh()
 
 struct FunnelTarget{G<:Real} 
     dist::Funnel{G}
 end
 FunnelTarget(dim::Int) = FunnelTarget(Funnel(dim))
-
 function LogDensityProblems.capabilities(::FunnelTarget)
     LogDensityProblems.LogDensityOrder{1}()
 end
@@ -20,19 +25,12 @@ function LogDensityProblems.logdensity(πT::FunnelTarget, x::AbstractVector)
     return logpdf(πT.dist, x)
 end
 
-# function LogDensityProblems.logdensity_and_gradient(πT::FunnelTarget, x::AbstractVector)
-#     l = logpdf(πT.dist, x)
-#     ∇l = score(πT.dist, x)
-#     return l, ∇l
-# end
-
-
 # flow reference distribution
 function create_planar_flow(n_layers::Int, q₀)
     d = length(q₀)
-    Ls = [PlanarLayer(d) for _ in 1:n_layers]
-    ts = fchain(Ls)
-    return transformed(q₀, ts)
+    Ls = reduce(∘, [PlanarLayer(d) for _ in 1:n_layers])
+    # ts = fchain(Ls) # fchain seems to be broken for zygote
+    return transformed(q₀, Ls)
 end
 
  
@@ -42,8 +40,6 @@ end
 D = 2
 L = LinearPath()
 
-# p0 = GaussianReference(zeros(D))
-# create a 10-layer planar flow as reference
 nlayers = 10
 @leaf MvNormal # to prevent MvNormal from being transformed
 
@@ -54,78 +50,68 @@ p0 = create_planar_flow(nlayers, q0)
 p1 = FunnelTarget(D)
 prob = AISProblem(p0, p1, L)
 
-# destrcut the prob
-ps, re = Optimisers.destructure(prob)
 
-
-# test run
-N = 32
-MD = MirrorDescent(stepsize = 0.1, max_Δ = 0.5, max_T = Inf)
-a = ais(prob, MD; N = N, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
-FS = FixedSchedule(a.schedule)
-
-rngs = SplitRandomArray(N; seed = 1)
-xs = iid_sample_reference(rngs, prob, N)
-# mutate!(rngs, RWMH_sweep(), prob, 0.5, xs)
-# AdaptiveAIS.mutate_and_weigh!(rngs, MD, prob, RWMH_sweep(), 0.5, xs, zeros(N), zeros(N), 0.1)
-
-# elbo(rngs, prob, FS; N = N, transition_kernel = RWMH_sweep())
-
-# elbo(rngs, re(ps), MD; N = N, transition_kernel = RWMH_sweep())
-
-# DMD = DebiasOnlineScheduling(MD)
-# elbo(rngs, prob, DMD; N = N, transition_kernel = RWMH_sweep())
-
-
-
-# loss = θ -> -elbo(rngs, re(θ), MD; N = N, transition_kernel = RWMH_sweep())[1]
-
-# GE = TwoPointZeroOrderSmooth()
-# gt = get_gradient(GE, loss, ps)
-
-
-# to use it for actual update loop
-# opt = DecayDescent(0.1)
-# st = Optimisers.setup(opt, ps)
-
-# st, ps = Optimisers.update!(st, ps, gt)
-
-# gt = grad_and_update_state!(GE, loss, ps)
-
-# ls, gt = value_grad_and_update_state!(GE, loss, ps)
-
-
-rng = rngs[1]
-logws, logas, β= AdaptiveAIS._compute_log_weights(rng, prob, MD, xs; N = N, transition_kernel = RWMH_sweep())
+rng = Random.default_rng()
 
 ZO = TwoPointZeroOrderSmooth()
 CB = CondBernoulli()
 CBCV = CondBernoulliCV()
 
+# kl_objective(rng, prob, ZO, MD, N, kernel)
+# kl_objective(rng, prob, CB, MD, N, kernel)
+# kl_objective(rng, prob, CBCV, MD, N, kernel)
+
+
+# Zygote.gradient(lld, ps)
+lr = 1e-3
 kernel = RWMH_sweep()
-kl_objective(rng, prob, ZO, MD, N, kernel)
-kl_objective(rng, prob, CB, MD, N, kernel)
-kl_objective(rng, prob, CBCV, MD, N, kernel)
-
-ps, re = Optimisers.destructure(prob)
-DMD = DebiasOnlineScheduling(MD)
-lld(θ_) = kl_objective(θ_, re, CB, DMD, rng, N, RWMH_sweep())
-lld(ps)
-
-
-Zygote.refresh()
-
-using Zygote
-import DifferentiationInterface as DI
-using ADTypes
-
-
-# test gradient of loss
-
 AD = AutoZygote()
+# using Mooncake
+# AD = AutoMooncake(; config = Mooncake.Config())
 
-DI.gradient(llls, AD, ps)
-DI.value_and_gradient(llls, AD, ps)
+MD = MirrorDescent(stepsize = 0.1, max_Δ = 0.5, max_T = Inf)
+# a = ais(prob, MD; N = N, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
+FS = FixedSchedule(32)
+DMD = DebiasOnlineScheduling(MD)
+bs = 32
+niters = 20_000
 
-Zygote.gradient(lld, ps)
+scheds = [FS, MD, DMD]
 
+
+for sched in scheds
+    @threads for id in 1:5
+        AdaptiveAIS.init_state!(ZO, 1)
+        prob_trained, train_stats, _, _ = dais_train(
+            rng, 
+            prob,
+            ZO, 
+            sched, 
+            bs, 
+            kernel;
+            adbackend = ZO, 
+            max_iters = niters,
+            optimiser = Optimisers.ADAM(lr),
+        )
+        out = process_logging(train_stats)
+
+        # save csv
+        fpath = "funnel_res/$(sched)_$(id).csv"
+        df = DataFrame(out)
+        CSV.write(fpath, df)
+
+        # save jld2
+        fp_jld = "funnel_res/$(sched)_$(id).jld2"
+        JLD2.save(fp_jld, "out", out)
+    end
+end
+
+# out = process_logging(train_stats)
+# # turn it into a DataFrame
+# df = DataFrame(out)
+# CSV.write("funnel_res/demo_flow.csv", df)
+
+# using DataFrames
+# df2 = CSV.read("funnel_res/demo_flow.csv", DataFrame)
+
+# oo = JLD2.load(fp_jld)

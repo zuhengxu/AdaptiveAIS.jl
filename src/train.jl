@@ -87,8 +87,7 @@ function optimize(
     return θ, map(identity, opt_stats), st, time_elapsed
 end
 
-
-function dais(
+function dais_train(
     rng::AbstractRNG,
     prob::AISProblem,
     args...;
@@ -118,16 +117,17 @@ end
 
 # a default Call back function for training evaluation 
 function default_cb(i, stats, re, θ, rng, GE, sched, N, kernel)
-    if i % 100 == 0
+    if i % 10 == 0
         a = ais(re(θ), sched; seed = i, N = N, transition_kernel = kernel, show_report = false)
         T = length(get_schedule(a))
         el = a.particles.elbo
         logz = a.particles.log_normalization
-        return (elbo=el, logZ=logz, sched_length=T)
+        return (batchsize = N, elbo=el, logZ=logz, sched_length=T)
     else
         return (
+            batchsize=N,
             elbo=nothing,
-            logz=nothing,
+            logZ=nothing,
             sched_length=nothing,
         )
     end    
@@ -135,7 +135,7 @@ end
 
 function process_logging(train_stats)
     return (
-        iteration = [s.iteration for s in train_stats],
+        iteration = [s.iteration for s in train_stats if !isnothing(s.logZ)],
         logZs = [s.logZ for s in train_stats if !isnothing(s.logZ)],
         elbos = [s.elbo for s in train_stats if !isnothing(s.elbo)],
         Ts = [s.sched_length for s in train_stats if !isnothing(s.sched_length)],

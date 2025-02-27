@@ -90,7 +90,7 @@ include("objective.jl")
 export kl_objective
 
 include("train.jl")
-export dais
+export dais_train, process_logging
 
 
 end

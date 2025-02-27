@@ -147,7 +147,7 @@ function kl_objective(
     return -_elbo(GE, log_weights, log_As)
 end
 
-kl_objective(θ_flat, re, GE::AbstractGradEst, args...) = kl_objective(re(θ_flat), GE, args...)
+kl_objective(rng, θ_flat, re, GE::AbstractGradEst, args...) = kl_objective(rng, re(θ_flat), GE, args...)
 
 # function dais(
 #     rng::AbstractRNG,
