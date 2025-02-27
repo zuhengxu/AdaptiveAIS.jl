@@ -91,4 +91,3 @@ elbo(rngs, θ_flat, re, sched::AbstractScheduler; kargs...) =
 
 elbo(θ_flat, re, sched::AbstractScheduler; kargs...) =
     elbo(Random.default_rng(), θ_flat, re, sched; kargs...)
-

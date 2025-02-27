@@ -53,13 +53,13 @@ ps, re = Optimisers.destructure(prob)
 
 
 # test run
-N = 64
+N = 32
 MD = MirrorDescent(stepsize = 0.01, max_Δ = 0.1, max_T = Inf)
 a = ais(prob, MD; N = N, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
 FS = FixedSchedule(a.schedule)
 
-xs = iid_sample_reference(rngs, prob, N)
 rngs = SplitRandomArray(N; seed = 1)
+xs = iid_sample_reference(rngs, prob, N)
 # mutate!(rngs, RWMH_sweep(), prob, 0.5, xs)
 # AdaptiveAIS.mutate_and_weigh!(rngs, MD, prob, RWMH_sweep(), 0.5, xs, zeros(N), zeros(N), 0.1)
 
@@ -69,5 +69,27 @@ elbo(rngs, re(ps), MD; N = N, transition_kernel = RWMH_sweep())
 
 DMD = DebiasOnlineScheduling(MD)
 elbo(rngs, prob, DMD; N = N, transition_kernel = RWMH_sweep())
+
+
+
+loss = θ -> -elbo(rngs, re(θ), MD; N = N, transition_kernel = RWMH_sweep())[1]
+
+GE = TwoPointZeroOrderSmooth()
+gt = get_gradient(GE, loss, ps)
+
+
+# to use it for actual update loop
+opt = DecayDescent(0.1)
+st = Optimisers.setup(opt, ps)
+
+st, ps = Optimisers.update!(st, ps, gt)
+
+gt = grad_and_update_state!(GE, loss, ps)
+
+re(ps)
+
+ls, gt = value_grad_and_update_state!(GE, loss, ps)
+
+
 
 
