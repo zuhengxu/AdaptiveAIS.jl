@@ -37,7 +37,7 @@ end
 #####################
 # setup ais problem
 #####################
-D = 2
+D = 5
 L = LinearPath()
 
 nlayers = 10

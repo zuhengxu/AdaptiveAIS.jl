@@ -4,7 +4,7 @@ struct RWMH_sweep <: TransitionKernel
     n_passes::Int
 end
 
-RWMH_sweep() = RWMH_sweep([10^p for p in -5:1:1], I, 1)
+RWMH_sweep() = RWMH_sweep([10^p for p in -5:0.5:1], I, 1)
 
 function rwmh!(rng, x, ℓ, ϵ, logπ::Function, sqrtΣ)
     u_norm = randn(rng, size(x))
