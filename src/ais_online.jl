@@ -82,3 +82,11 @@ end
 
 push_states!(::Nothing, _) = nothing
 push_states!(trajectory, states) = push!(trajectory, copy(states))
+
+
+function ais(prob, sched::DebiasOnlineScheduling; kargs...)
+    a = ais(prob, sched.OnlineSched; kargs...)
+    β = a.schedule
+    FS = FixedSchedule(β)
+    return ais(prob, FS; kargs...)
+end
