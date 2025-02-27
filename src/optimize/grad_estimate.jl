@@ -94,3 +94,5 @@ end
 struct CondBernoulli <: AbstractGradEst end
 
 struct CondBernoulliCV <: AbstractGradEst end
+
+struct StochasticAD <: AbstractGradEst end

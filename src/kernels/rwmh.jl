@@ -4,7 +4,7 @@ struct RWMH_sweep <: TransitionKernel
     n_passes::Int
 end
 
-RWMH_sweep() = RWMH_sweep([10^p for p in -5:0.1:1], I, 1)
+RWMH_sweep() = RWMH_sweep([10^p for p in -5:0.2:1], I, 1)
 
 function rwmh!(rng, x, ℓ, ϵ, logπ::Function, sqrtΣ)
     u_norm = randn(rng, size(x))
@@ -28,13 +28,17 @@ end
 
 
 
-_mh_select(xp::T, x::T, acc::Bool) where T = acc * xp + (1 - acc) * x
-_mh_logα(logα::T, acc::Bool) where T = acc * logα + (1 - acc) * log1mexp(logα)
+_mh_select(lp::T, l::T, acc::Bool) where T = acc ? lp : l
+_mh_select(xp::T, x::T, acc::AbstractVector{Bool}) where {T<:AbstractArray} = xp .* acc' .+ x .* (1 .- acc)'
+_mh_logα(logα::T, acc::Bool) where {T<:Real} = acc ? logα : log1mexp(logα)
 
 function _accept_reject(rng, x::AbstractMatrix, ℓ::AbstractVector, xp::AbstractMatrix, ℓp::AbstractVector)
     logα = min.(ℓp .- ℓ, 0) # size N
-    acc = (log.(rand(rng, size(logα))) .<= logα) # size N
-    return _mh_select.(xp, x, acc), _mh_select.(ℓp, ℓ, acc), _mh_logα.(logα, acc), acc
+
+    bern = rand(rng, size(logα)...) # generate bernoulli samples
+    acc = (log.(bern) .<= logα) # size N
+    logA = _mh_logα.(logα, acc)
+    return _mh_select(xp, x, acc), _mh_select.(ℓp, ℓ, acc), logA, acc
 end
 
 function rwmh_batch(rng, xs::AbstractMatrix, ℓs::AbstractVector, ϵ, logπ::Function, sqrtΣ)

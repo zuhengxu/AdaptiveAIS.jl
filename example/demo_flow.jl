@@ -54,7 +54,7 @@ ps, re = Optimisers.destructure(prob)
 
 # test run
 N = 32
-MD = MirrorDescent(stepsize = 0.01, max_Δ = 0.1, max_T = Inf)
+MD = MirrorDescent(stepsize = 0.1, max_Δ = 0.5, max_T = Inf)
 a = ais(prob, MD; N = N, save_trajectory = false, show_report = true, transition_kernel = RWMH_sweep())
 FS = FixedSchedule(a.schedule)
 
@@ -91,5 +91,6 @@ re(ps)
 ls, gt = value_grad_and_update_state!(GE, loss, ps)
 
 
-
+rng = rngs[1]
+logws, logas, β= AdaptiveAIS._compute_log_weights(rng, prob, MD, xs; N = N, transition_kernel = RWMH_sweep())
 

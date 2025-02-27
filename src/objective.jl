@@ -9,7 +9,7 @@ function mutate_and_weigh(
     log_weights::AbstractVector,
     Δβ, 
 ) where {R, F}
-    log_ratios = log_density_ratio(prob, states)
+    log_ratios = log_density_ratio(prob, states) 
     states, logAs = mutate(rngs, transition_kernel, prob, next_beta, states)
     return states, logAs, log_weights + Δβ.* log_ratios
 end
@@ -128,10 +128,10 @@ _elbo(::CondBernoulli, log_weights, log_As) = _elbo_mcvae(log_weights, log_As)
 _elbo(::CondBernoulliCV, log_weights, log_As) = _elbo_mcvae_cv(log_weights, log_As)
 
 function kl_objective(
-    GE::AbstractGradEst,
-    rngs,
     prob::AISProblem,
-    sched::AbstractScheduler; 
+    GE::AbstractGradEst,
+    sched::AbstractScheduler,
+    rngs; 
     N::Int=2^5,
     transition_kernel=RWMH_sweep(),
 )
@@ -139,6 +139,5 @@ function kl_objective(
     log_weights, log_As, _ = _compute_log_weights(rngs, prob, sched, states; N=N, transition_kernel=transition_kernel)
     return -_elbo(GE, log_weights, log_As)
 end
-
 
 

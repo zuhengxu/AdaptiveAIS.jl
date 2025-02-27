@@ -8,7 +8,7 @@ end
 
 LogDensityProblems.dimension(πT::Bijectors.MultivariateTransformed) = length(πT)
 
-function LogDensityProblems.logdensity(πT::Bijectors.MultivariateTransformed, x)
+function LogDensityProblems.logdensity(πT::Bijectors.MultivariateTransformed, x::AbstractVector)
     return logpdf(πT, x)
 end
 

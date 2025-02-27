@@ -23,7 +23,7 @@ export LinearPath, AbstractPath
 using Functors
 include("aisproblem.jl")
 export  AISProblem, AIS_output
-export log_density_ratio, log_density_ratio!
+export log_density_ratio, log_density_ratio!, log_density_reference, log_density_target
 export log_annealed_density, log_annealed_gradient, log_annealed_density_and_gradient
 export iid_sample, iid_sample_reference
 
