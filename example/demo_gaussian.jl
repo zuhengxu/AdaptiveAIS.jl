@@ -1,78 +1,23 @@
-include("demo_utils.jl")
+using AdaptiveAIS
+using LinearAlgebra
+using Distributions, Random, LogDensityProblems, LogDensityProblemsAD
+using Mooncake, DifferentiationInterface, ADTypes
 
-struct GaussianTarget{E<:Real} <: AbstractTarget
-    dist::MvNormal{E}
-end
+const AIS = AdaptiveAIS
 
-function GaussianTarget(mu::AbstractVector{E}, σ::E = 0.2) where {E}
-    GaussianTarget(MvNormal(mu, σ*one(E)))
-end
+include("logdensityprobs.jl")
 
-function LogDensityProblems.capabilities(::GaussianTarget)
-    LogDensityProblems.LogDensityOrder{1}()
-end
-
-LogDensityProblems.dimension(πT::GaussianTarget) = length(πT.dist)
-function LogDensityProblems.logdensity(πT::GaussianTarget, x::AbstractVector)
-    return logpdf(πT.dist, x)
-end
-function LogDensityProblems.logdensity_and_gradient(πT::GaussianTarget, x::AbstractVector)
-    l = logpdf(πT.dist, x)
-    ∇l = ForwardDiff.gradient(y -> logpdf(πT.dist, y), x)
-    return l, ∇l
-end
-
-
-###############################
-# testing slice sampler
-##############################
-# N = 1000
-# s = zeros(2, N)
-# rngs = SplitRandomArray(N)
-# iid_sample!(rngs, p0, s)
-#
-# T = 20
-# sched = FixedSchedule(T)
-# L = LinearPath
-# prob = AISProblem(p0, p1, L)
-# iid_sample_reference!(rngs, prob, s)
-#
-#
-# logpβ(β, s) = log_annealed_density(prob, β, s) 
-# # current_temp(prob)
-#
-# nstep = 10
-# d = dimension(prob)
-# T = length(sched)
-# state = zeros(d, nstep)
-# buffer = copy(state)
-#
-# # checking slice sampler
-# rng = SplittableRandom(1)
-# h = CoordSliceSampler()
-# state = zeros(2)
-# n = 1000
-# states = Vector{typeof(state)}(undef, n)
-# cached_lp = -Inf
-#
-# for i in 1:n
-#     replica = Replica(state, 1, rng, (;), 1)
-#     step!(h, prob, 0.5, state)
-#     states[i] = copy(state)
-# end
-# states
 
 ############################
 # set up the problem
 ############################
 dim = 10
 N = 2000
-T = 40
-L = LinearPath
+L = LinearPath()
 μ = 10
 sigma = 0.2
-p0 = GaussianReference(zeros(dim))
-p1 = GaussianTarget(μ*ones(dim), sigma)
+p0 = MvNormal(zeros(dim), I)
+p1 = MvNormal(μ*ones(dim), sigma*I)
 prob = AISProblem(p0, p1, L)
 
 ##################### 
@@ -87,7 +32,7 @@ prob = AISProblem(p0, p1, L)
 #
 # ais_sais = ais(prob, sais; N = N)
 # β_sais = ais_sais.schedule
-#
+
 ##################### 
 # testing online schedule selection
 #####################
@@ -105,23 +50,27 @@ prob = AISProblem(p0, p1, L)
 #####################
 # testing checking bias
 #####################
-# _, _, diffs = check_bias(prob, MD; show_report = false);
 
-δs = [0.001, 0.01, 0.1, 0.2, 0.5, 1]
+δs = [0.01, 0.1, 0.2]
 
 for δ in δs
     MD = MirrorDescent(stepsize = δ, max_Δ = 0.1, max_T = Inf)
-    check_bias(prob, MD; N = N);
+    a_res = ais(prob, MD; N = N, show_report = true)
 end
 
-# for δ in δs
-#     CRP = ConstantRateProgress(stepsize = δ, max_Δ = 1, max_T = Inf)
-#     check_bias(prob, CRP; N = N);
-# end
+for δ in δs
+    CRP = ConstantRateProgress(stepsize = δ, max_Δ = 1, max_T = Inf)
+    a_res = ais(prob, CRP; N = N, show_report = true)
+end
 
-divs = [0.001, 0.01, 0.1, 0.2, 0.5, 1]
+divs = [0.01, 0.1, 0.5]
 for div in divs
     LS = LineSearch(divergence = div, max_T = Inf)
-    check_bias(prob, LS; N = N);
+    a_res = ais(prob, LS; N = N, show_report = true)
 end
 
+T = 1024
+nrounds = 3
+S = SAIS(T, nrounds)
+
+a_res = ais(prob, S; N = 2000, transition_kernel = CoordSliceSampler(), show_report = true)

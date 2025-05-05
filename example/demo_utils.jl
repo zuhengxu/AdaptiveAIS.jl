@@ -1,5 +1,3 @@
-include("gaussian_reference.jl")
-
 ###
 function nice_print(d::Dict)
     println("-------------------") 

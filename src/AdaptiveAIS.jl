@@ -11,7 +11,6 @@ using SimpleUnPack
 using Pigeons
 using Pigeons: @auto
 
-using ChainRulesCore
 
 include("SplitRandom.jl")
 export SplitRandomArray
@@ -22,7 +21,7 @@ export LinearPath, AbstractPath
 
 using Functors
 include("aisproblem.jl")
-export  AISProblem, AIS_output
+export AISProblem, AIS_output
 export log_density_ratio, log_density_ratio!, log_density_reference, log_density_target
 export log_annealed_density, log_annealed_gradient, log_annealed_density_and_gradient
 export iid_sample, iid_sample_reference
@@ -67,30 +66,5 @@ include("ais_online.jl")
 # 3. constant divergence rate progression:  "Adaptive Annealed Importance Sampling with Constant Rate Progress"
 include("online_scheduling.jl")
 export MirrorDescent, LineSearch, ConstantRateProgress
-
-#############################
-# optimization related
-############################
-using Optimisers
-include("optimize/rules.jl")
-export DecayDescent
-
-include("optimize/grad_estimate.jl")
-export get_gradient, update_state!, init_state!, value_and_grad
-export grad_and_update_state!, value_grad_and_update_state!
-export AbstractGradEst, TwoPointZeroOrderSmooth, CondBernoulli, CondBernoulliCV
-
-#############################
-# VI objective 
-############################
-include("elbo.jl")
-export elbo
-
-include("objective.jl")
-export kl_objective
-
-include("train.jl")
-export dais_train, process_logging
-
 
 end
