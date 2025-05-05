@@ -9,8 +9,8 @@ struct AISProblem{F,T,A<:AbstractPath}
         new{F,T,A}(reference, target, path)
     end
 end
-# adding this so that reference can be tunable
-@functor AISProblem (reference, )
+# # adding this so that reference can be tunable
+# @functor AISProblem (reference, )
 
 dimension(prob::AISProblem) = LogDensityProblems.dimension(prob.target)
 
