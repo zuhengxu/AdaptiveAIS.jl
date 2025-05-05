@@ -10,7 +10,7 @@ function ais(
     seed=1,
     save_trajectory=false,
     compute_barriers=false,
-    transition_kernel=RWMH_sweep(),
+    transition_kernel=CoordSliceSampler(),
     show_report = true, 
 )
     full_timing = @timed begin
