@@ -46,10 +46,12 @@ prob = AISProblem(p0, p1, L)
 # CRP = ConstantRateProgress(stepsize = 0.1, max_Δ = 0.5, max_T = Inf)
 # ais_crp = ais(prob, CRP; N = N, transition_kernel = CoordSliceSampler())
 # β_crp = ais_crp.schedule
-#
+
 #####################
-# testing checking bias
+# testing all methods
 #####################
+
+nptls = 2^12
 
 δs = [0.01, 0.1, 0.2]
 
@@ -69,8 +71,8 @@ for div in divs
     a_res = ais(prob, LS; N = N, show_report = true)
 end
 
-T = 1024
+T = 2048
 nrounds = 3
 S = SAIS(T, nrounds)
 
-a_res = ais(prob, S; N = 2000, transition_kernel = CoordSliceSampler(), show_report = true)
+a_res = ais(prob, S; N = nptls, transition_kernel = CoordSliceSampler(), show_report = true)
