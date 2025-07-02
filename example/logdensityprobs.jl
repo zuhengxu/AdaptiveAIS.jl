@@ -21,6 +21,6 @@ LogDensityProblems.logdensity(dist::ContinuousDistribution, x) = logpdf(dist, x)
 
 
 
-AIS.iid_sample(rng, dist::ContinuousDistribution, n::Int) = rand(dist, n)
-AIS.iid_sample(rng, dist::ContinuousDistribution) = rand(dist)
+AdaptiveAIS.iid_sample(rng, dist::ContinuousDistribution, n::Int) = rand(dist, n)
+AdaptiveAIS.iid_sample(rng, dist::ContinuousDistribution) = rand(dist)
 

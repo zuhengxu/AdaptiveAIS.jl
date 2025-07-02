@@ -52,6 +52,12 @@ prob = AISProblem(p0, p1, L)
 
 nptls = 2^12
 
+T = 2048
+nrounds = 3
+S = SAIS(T, nrounds)
+
+a_res = ais(prob, S; N = nptls, transition_kernel = CoordSliceSampler(), show_report = true)
+
 # δs = [0.01, 0.1, 0.2]
 
 # for δ in δs
@@ -59,10 +65,10 @@ nptls = 2^12
 #     a_res = ais(prob, MD; N = nptls, show_report = true)
 # end
 
-for δ in δs
-    CRP = ConstantRateProgress(stepsize = δ, max_Δ = 1, max_T = Inf)
-    a_res = ais(prob, CRP; N = nptls, show_report = true)
-end
+# for δ in δs
+#     CRP = ConstantRateProgress(stepsize = δ, max_Δ = 1, max_T = Inf)
+#     a_res = ais(prob, CRP; N = nptls, show_report = true)
+# end
 
 # divs = [0.01, 0.1, 0.5]
 # for div in divs
@@ -70,8 +76,3 @@ end
 #     a_res = ais(prob, LS; N = nptls, show_report = true)
 # end
 
-T = 2048
-nrounds = 3
-S = SAIS(T, nrounds)
-
-a_res = ais(prob, S; N = nptls, transition_kernel = CoordSliceSampler(), show_report = true)
